@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EdUHK Contact Book</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f9;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .contact-list, .form-section, .admin-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        .edit-btn {
+            background: #ffc107;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .edit-btn:hover {
+            background: #e0a800;
+        }
+        .form-section input, .form-section textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .form-section button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .form-section button:hover {
+            background: #218838;
+        }
+        .admin-section {
+            display: none;
+        }
+        .admin-section.active {
+            display: block;
+        }
+        .request-item {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        .approve-btn, .reject-btn {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+        .approve-btn {
+            background: #28a745;
+            color: white;
+        }
+        .approve-btn:hover {
+            background: #218838;
+        }
+        .reject-btn {
+            background: #dc3545;
+            color: white;
+        }
+        .reject-btn:hover {
+            background: #c82333;
+        }
+        #adminToggle {
+            background: #007bff;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        #adminToggle:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>EdUHK Contact Book</h1>
+        
+        <!-- Contact List -->
+        <div class="contact-list">
+            <h2>Department Contacts</h2>
+            <table id="contactTable">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Keywords</th>
+                        <th>Phone Number</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="contactTableBody"></tbody>
+            </table>
+        </div>
+
+        <!-- Form for Adding/Editing Contacts -->
+        <div class="form-section">
+            <h2>Submit Department Information</h2>
+            <form id="contactForm">
+                <input type="hidden" id="editId">
+                <input type="text" id="deptName" placeholder="Department Name" required>
+                <textarea id="keywords" placeholder="Keywords (comma-separated)" required></textarea>
+                <input type="tel" id="phone" placeholder="Phone Number" required>
+                <button type="submit">Submit</button>
+            </form>
+        </div>
+
+        <!-- Admin Section -->
+        <button id="adminToggle">Toggle Admin View</button>
+        <div class="admin-section" id="adminSection">
+            <h2>Pending Requests</h2>
+            <div id="pendingRequests"></div>
+        </div>
+    </div>
+
+    <script>
+        // Sample initial data
+        const initialContacts = [
+            { id: '1', name: 'Department of Education Studies', keywords: 'Education, Teaching, Research', phone: '+852 2948 1234' },
+            { id: '2', name: 'Faculty of Humanities', keywords: 'Literature, Languages, Culture', phone: '+852 2948 5678' }
+        ];
+
+        let contacts = JSON.parse(localStorage.getItem('contacts')) || initialContacts;
+        let pendingRequests = JSON.parse(localStorage.getItem('pendingRequests')) || [];
+
+        // Save to localStorage
+        function saveData() {
+            localStorage.setItem('contacts', JSON.stringify(contacts));
+            localStorage.setItem('pendingRequests', JSON.stringify(pendingRequests));
+        }
+
+        // Render contact table
+        function renderContacts() {
+            const tableBody = document.getElementById('contactTableBody');
+            tableBody.innerHTML = '';
+            contacts.forEach(contact => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${contact.name}</td>
+                    <td>${contact.keywords}</td>
+                    <td>${contact.phone}</td>
+                    <td><button class="edit-btn" onclick="loadEditForm('${contact.id}')">Edit</button></td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Render pending requests
+        function renderPendingRequests() {
+            const pendingDiv = document.getElementById('pendingRequests');
+            pendingDiv.innerHTML = '';
+            pendingRequests.forEach((req, index) => {
+                const div = document.createElement('div');
+                div.className = 'request-item';
+                div.innerHTML = `
+                    <p><strong>Name:</strong> ${req.name}</p>
+                    <p><strong>Keywords:</strong> ${req.keywords}</p>
+                    <p><strong>Phone:</strong> ${req.phone}</p>
+                    <p><strong>Type:</strong> ${req.editId ? 'Edit' : 'New'}</p>
+                    <button class="approve-btn" onclick="approveRequest(${index})">Approve</button>
+                    <button class="reject-btn" onclick="rejectRequest(${index})">Reject</button>
+                `;
+                pendingDiv.appendChild(div);
+            });
+        }
+
+        // Load edit form
+        function loadEditForm(id) {
+            const contact = contacts.find(c => c.id === id);
+            if (contact) {
+                document.getElementById('editId').value = id;
+                document.getElementById('deptName').value = contact.name;
+                document.getElementById('keywords').value = contact.keywords;
+                document.getElementById('phone').value = contact.phone;
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('contactForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const editId = document.getElementById('editId').value;
+            const newContact = {
+                id: editId || Date.now().toString(),
+                name: document.getElementById('deptName').value,
+                keywords: document.getElementById('keywords').value,
+                phone: document.getElementById('phone').value
+            };
+            pendingRequests.push({ ...newContact, editId });
+            saveData();
+            renderPendingRequests();
+            this.reset();
+            document.getElementById('editId').value = '';
+            alert('Request submitted for admin approval.');
+        });
+
+        // Approve request
+        function approveRequest(index) {
+            const req = pendingRequests[index];
+            if (req.editId) {
+                const contactIndex = contacts.findIndex(c => c.id === req.editId);
+                if (contactIndex !== -1) {
+                    contacts[contactIndex] = { id: req.editId, name: req.name, keywords: req.keywords, phone: req.phone };
+                }
+            } else {
+                contacts.push({ id: req.id, name: req.name, keywords: req.keywords, phone: req.phone });
+            }
+            pendingRequests.splice(index, 1);
+            saveData();
+            renderContacts();
+            renderPendingRequests();
+        }
+
+        // Reject request
+        function rejectRequest(index) {
+            pendingRequests.splice(index, 1);
+            saveData();
+            renderPendingRequests();
+        }
+
+        // Toggle admin view with password
+        document.getElementById('adminToggle').addEventListener('click', function() {
+            const adminSection = document.getElementById('adminSection');
+            if (!adminSection.classList.contains('active')) {
+                const password = prompt('Please enter the admin password:');
+                if (password === 'Eduhk1234') {
+                    adminSection.classList.add('active');
+                } else {
+                    alert('Incorrect password.');
+                }
+            } else {
+                adminSection.classList.remove('active');
+            }
+        });
+
+        // Initial render
+        renderContacts();
+        renderPendingRequests();
+    </script>
+</body>
+</html>
