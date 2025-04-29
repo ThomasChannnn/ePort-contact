@@ -1,44 +1,3 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!-- index.html -->
-<xaiArtifact artifact_id="8515f0cc-98dd-4918-8cab-af07147150c3" artifact_version_id="ced701b6-4ccc-4cb1-bccd-55f6534e4c5c" title="index.html" contentType="text/html">
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -46,28 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EduHK Contact Book</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <div class="container">
-        <h1>EduHK Contact Book</h1>
+    <header>
+        <h1><i class="fas fa-book"></i> EduHK Contact Book</h1>
+        <a href="admin.html" class="admin-btn"><i class="fas fa-user-shield"></i> Admin</a>
+    </header>
+    <main>
         <div class="search-container">
-            <input type="text" id="searchInput" placeholder="Search by keywords or phone number...">
+            <input type="text" id="searchInput" placeholder="Search by keywords or phone...">
+            <i class="fas fa-search search-icon"></i>
         </div>
-        <button onclick="showSuggestionForm('new')">Suggest New Contact</button>
+        <button id="suggestBtn" class="suggest-btn"><i class="fas fa-plus"></i> Suggest Contact</button>
         <div id="contactList"></div>
-    </div>
+    </main>
 
-    <!-- Suggestion Form Modal -->
-    <div id="suggestionModal" class="modal">
+    <!-- Suggestion Modal -->
+    <div id="suggestModal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="closeSuggestionForm()">&times;</span>
-            <h2 id="formTitle">Suggest New Contact</h2>
-            <form id="suggestionForm">
-                <input type="text" id="deptName" placeholder="Department Name" required>
-                <input type="text" id="keywords" placeholder="Keywords (comma-separated)" required>
-                <input type="tel" id="phone" placeholder="Phone Number (8 digits)" pattern="[0-9]{8}" required>
-                <input type="hidden" id="contactId">
-                <button type="submit">Submit Suggestion</button>
+            <span class="close">&times;</span>
+            <h2>Suggest Contact</h2>
+            <form id="suggestForm">
+                <input type="text" id="suggestName" placeholder="Department Name" required>
+                <input type="text" id="suggestKeywords" placeholder="Keywords (comma-separated)" required>
+                <input type="text" id="suggestPhone" placeholder="Phone (8 digits)" pattern="\d{8}" required>
+                <input type="hidden" id="editId">
+                <button type="submit">Submit</button>
             </form>
         </div>
     </div>
