@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EduHK Contact Book</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 </head>
 <body>
     <header>
@@ -13,25 +13,31 @@
         <a href="admin.html" class="admin-btn"><i class="fas fa-user-shield"></i> Admin</a>
     </header>
     <main>
-        <div class="search-container">
-            <input type="text" id="searchInput" placeholder="Search by keywords or phone...">
-            <i class="fas fa-search search-icon"></i>
-        </div>
-        <button id="suggestBtn" class="suggest-btn"><i class="fas fa-plus"></i> Suggest Contact</button>
-        <div id="contactList"></div>
+        <section class="search-section">
+            <input type="text" id="searchInput" placeholder="Search by keywords or phone number...">
+            <button onclick="searchContacts()"><i class="fas fa-search"></i> Search</button>
+        </section>
+        <section class="contact-list">
+            <h2>Contact List</h2>
+            <ul id="contactList"></ul>
+        </section>
+        <button class="suggest-btn" onclick="openSuggestModal('new')"><i class="fas fa-plus"></i> Suggest New Contact</button>
     </main>
 
-    <!-- Suggestion Modal -->
+    <!-- Modal for Suggestions -->
     <div id="suggestModal" class="modal">
         <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>Suggest Contact</h2>
+            <span class="close" onclick="closeSuggestModal()">&times;</span>
+            <h2 id="modalTitle">Suggest New Contact</h2>
             <form id="suggestForm">
-                <input type="text" id="suggestName" placeholder="Department Name" required>
-                <input type="text" id="suggestKeywords" placeholder="Keywords (comma-separated)" required>
-                <input type="text" id="suggestPhone" placeholder="Phone (8 digits)" pattern="\d{8}" required>
-                <input type="hidden" id="editId">
-                <button type="submit">Submit</button>
+                <label for="suggestName">Department Name:</label>
+                <input type="text" id="suggestName" required>
+                <label for="suggestKeywords">Keywords:</label>
+                <input type="text" id="suggestKeywords" placeholder="e.g., education, research" required>
+                <label for="suggestPhone">Phone Number (8 digits):</label>
+                <input type="text" id="suggestPhone" pattern="\d{8}" placeholder="12345678" required>
+                <input type="hidden" id="suggestId">
+                <button type="submit">Submit Suggestion</button>
             </form>
         </div>
     </div>
