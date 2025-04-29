@@ -1,88 +1,164 @@
-let contacts = [
-    { id: 1, name: "Education Department", keywords: "education, teaching, curriculum", phone: "12345678" },
-    { id: 2, name: "IT Department", keywords: "technology, computers, network", phone: "87654321" }
-];
-
-let pendingSuggestions = [];
+let contacts = [];
+let suggestions = [];
+let currentEditId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    displayContacts(contacts);
-    document.getElementById('searchInput').addEventListener('input', searchContacts);
-    document.getElementById('suggestionForm').addEventListener('submit', handleSuggestion);
+    fetch('contacts.json')
+        .then(response => response.json())
+        .then(data => {
+            contacts = data;
+            displayContacts(contacts);
+        });
 });
 
-function displayContacts(contactsToShow) {
-    const contactList = document.getElementById('contactList');
-    contactList.innerHTML = '';
-    contactsToShow.forEach(contact => {
-        const formattedPhone = `${contact.phone.slice(0, 4)} ${contact.phone.slice(4)}`;
-        const div = document.createElement('div');
-        div.className = 'contact-item';
-        div.innerHTML = `
+// Format phone number as xxxx xxxx
+function formatPhoneNumber(phone) {
+    return phone.replace(/(\d{4})(\d{4})/, '$1 $2');
+}
+
+// Display contacts
+function displayContacts(contactList) {
+    const contactListUl = document.getElementById('contactList');
+    contactListUl.innerHTML = '';
+    contactList.forEach(contact => {
+        const li = document.createElement('li');
+        li.innerHTML = `
             <strong>${contact.name}</strong><br>
-            Keywords: ${contact.keywords}<br>
-            Phone: <a class="phone-link" href="tel:+852${contact.phone}">${formattedPhone}</a>
-            <button onclick="showSuggestionForm('edit', ${contact.id})">Edit</button>
+            Keywords: ${contact.keywords.join(', ')}<br>
+            Phone: <a href="tel:+852${contact.phone}">${formatPhoneNumber(contact.phone)}</a>
+            <button onclick="openSuggestModal('edit', ${contact.id})"><i class="fas fa-edit"></i> Suggest Edit</button>
         `;
-        contactList.appendChild(div);
+        contactListUl.appendChild(li);
     });
 }
 
+// Search contacts
 function searchContacts() {
-    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-    const filteredContacts = contacts.filter(contact => 
-        contact.keywords.toLowerCase().includes(searchTerm) ||
-        contact.phone.includes(searchTerm.replace(/\s/g, ''))
+    const query = document.getElementById('searchInput').value.toLowerCase();
+    const filtered = contacts.filter(contact => 
+        contact.keywords.some(keyword => keyword.toLowerCase().includes(query)) ||
+        contact.phone.includes(query.replace(/\s/g, ''))
     );
-    displayContacts(filteredContacts);
+    displayContacts(filtered);
 }
 
-function showSuggestionForm(mode, contactId = null) {
-    const modal = document.getElementById('suggestionModal');
-    const form = document.getElementById('suggestionForm');
-    const formTitle = document.getElementById('formTitle');
+// Open suggestion modal
+function openSuggestModal(mode, id = null) {
+    const modal = document.getElementById('suggestModal');
+    const form = document.getElementById('suggestForm');
+    const title = document.getElementById('modalTitle');
+    
+    if (mode === 'new') {
+        title.textContent = 'Suggest New Contact';
+        form.reset();
+        document.getElementById('suggestId').value = '';
+    } else {
+        title.textContent = 'Suggest Edit Contact';
+        const contact = contacts.find(c => c.id === id);
+        document.getElementById('suggestName').value = contact.name;
+        document.getElementById('suggestKeywords').value = contact.keywords.join(', ');
+        document.getElementById('suggestPhone').value = contact.phone;
+        document.getElementById('suggestId').value = id;
+    }
     
     modal.style.display = 'block';
-    formTitle.textContent = mode === 'new' ? 'Suggest New Contact' : 'Suggest Edit';
-    
-    if (mode === 'edit') {
-        const contact = contacts.find(c => c.id === contactId);
-        document.getElementById('deptName').value = contact.name;
-        document.getElementById('keywords').value = contact.keywords;
-        document.getElementById('phone').value = contact.phone;
-        document.getElementById('contactId').value = contactId;
-    } else {
-        form.reset();
-        document.getElementById('contactId').value = '';
-    }
 }
 
-function closeSuggestionForm() {
-    document.getElementById('suggestionModal').style.display = 'none';
+// Close suggestion modal
+function closeSuggestModal() {
+    document.getElementById('suggestModal').style.display = 'none';
 }
 
-function handleSuggestion(e) {
+// Handle form submission
+document.getElementById('suggestForm').addEventListener('submit', (e) => {
     e.preventDefault();
-    const name = document.getElementById('deptName').value;
-    const keywords = document.getElementById('keywords').value;
-    const phone = document.getElementById('phone').value;
-    const contactId = document.getElementById('contactId').value;
-
+    const name = document.getElementById('suggestName').value;
+    const keywords = document.getElementById('suggestKeywords').value.split(',').map(k => k.trim());
+    const phone = document.getElementById('suggestPhone').value;
+    const id = document.getElementById('suggestId').value;
+    
     if (!/^\d{8}$/.test(phone)) {
-        alert('Phone number must be 8 digits');
+        alert('Phone number must be 8 digits.');
         return;
     }
-
-    const suggestion = {
-        id: Date.now(),
+    
+    suggestions.push({
+        id: id ? parseInt(id) : Date.now(),
         name,
         keywords,
         phone,
-        contactId: contactId ? parseInt(contactId) : null,
-        type: contactId ? 'edit' : 'new'
-    };
+        isEdit: !!id
+    });
+    
+    localStorage.setItem('suggestions', JSON.stringify(suggestions));
+    alert('Suggestion submitted for admin approval.');
+    closeSuggestModal();
+});
 
-    pendingSuggestions.push(suggestion);
-    closeSuggestionForm();
-    alert('Suggestion submitted for admin approval');
+// Admin login
+function loginAdmin() {
+    const password = document.getElementById('adminPassword').value;
+    if (password === 'Eduhk1234') {
+        document.getElementById('loginForm').style.display = 'none';
+        document.getElementById('adminContent').style.display = 'block';
+        displaySuggestions();
+    } else {
+        alert('Incorrect password.');
+    }
+}
+
+// Display suggestions in admin panel
+function displaySuggestions() {
+    const suggestionList = document.getElementById('suggestionList');
+    suggestionList.innerHTML = '';
+    suggestions = JSON.parse(localStorage.getItem('suggestions') || '[]');
+    
+    suggestions.forEach(suggestion => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+            <strong>${suggestion.name}</strong><br>
+            Keywords: ${suggestion.keywords.join(', ')}<br>
+            Phone: ${formatPhoneNumber(suggestion.phone)}<br>
+            Type: ${suggestion.isEdit ? 'Edit' : 'New'}<br>
+            <button onclick="approveSuggestion(${suggestion.id})"><i class="fas fa-check"></i> Approve</button>
+            <button onclick="rejectSuggestion(${suggestion.id})"><i class="fas fa-times"></i> Reject</button>
+        `;
+        suggestionList.appendChild(li);
+    });
+}
+
+// Approve suggestion
+function approveSuggestion(id) {
+    const suggestion = suggestions.find(s => s.id === id);
+    if (suggestion.isEdit) {
+        const contact = contacts.find(c => c.id === suggestion.id);
+        if (contact) {
+            contact.name = suggestion.name;
+            contact.keywords = suggestion.keywords;
+            contact.phone = suggestion.phone;
+        }
+    } else {
+        contacts.push({
+            id: suggestion.id,
+            name: suggestion.name,
+            keywords: suggestion.keywords,
+            phone: suggestion.phone
+        });
+    }
+    removeSuggestion(id);
+    displayContacts(contacts);
+    alert('Suggestion approved.');
+}
+
+// Reject suggestion
+function rejectSuggestion(id) {
+    removeSuggestion(id);
+    alert('Suggestion rejected.');
+}
+
+// Remove suggestion
+function removeSuggestion(id) {
+    suggestions = suggestions.filter(s => s.id !== id);
+    localStorage.setItem('suggestions', JSON.stringify(suggestions));
+    displaySuggestions();
 }
