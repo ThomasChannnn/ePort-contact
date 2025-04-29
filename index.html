@@ -1,0 +1,86 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduHK Contact Book</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+</head>
+<body>
+    <header>
+        <h1><i class="fas fa-book"></i> EduHK Contact Book</h1>
+        <a href="admin.html" class="admin-btn"><i class="fas fa-user-shield"></i> Admin</a>
+    </header>
+    <main>
+        <section class="search-section">
+            <input type="text" id="searchInput" placeholder="Search by keywords or phone number...">
+            <button onclick="searchContacts()"><i class="fas fa-search"></i> Search</button>
+        </section>
+        <section class="contact-list">
+            <h2>Contact List</h2>
+            <ul id="contactList"></ul>
+        </section>
+        <button class="suggest-btn" onclick="openSuggestModal('new')"><i class="fas fa-plus"></i> Suggest New Contact</button>
+    </main>
+
+    <!-- Modal for Suggestions -->
+    <div id="suggestModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeSuggestModal()">&times;</span>
+            <h2 id="modalTitle">Suggest New Contact</h2>
+            <form id="suggestForm">
+                <label for="suggestName">Department Name:</label>
+                <input type="text" id="suggestName" required>
+                <label for="suggestKeywords">Keywords:</label>
+                <input type="text" id="suggestKeywords" placeholder="e.g., education, research" required>
+                <label for="suggestPhone">Phone Number (8 digits):</label>
+                <input type="text" id="suggestPhone" pattern="\d{8}" placeholder="12345678" required>
+                <input type="hidden" id="suggestId">
+                <button type="submit">Submit Suggestion</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
